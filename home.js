@@ -84,19 +84,54 @@ app.get('/stream',function(req,res,next){
     'Connection': 'keep-alive'
   });
   var messageCount = 0;
-  res.write('\n');
-  setInterval(function (){
-    messageCount++;
-    res.write('id: ' + messageCount + '\n');
-    res.write("data: " + req.query.url + " " + req.query.keyword + " " + req.query.searchType + " " + req.query.limit + '\n\n'); // Note the extra newline
-  }, 1000);
-  setTimeout(function (){
-    messageCount++;
-    res.write('event: close\n');
-    res.write('id: ' + messageCount + '\n');
-    res.write("data: " + randomString() + '\n\n'); // Note the extra newline
-  }, 5000);
-  // res.render('about',context);
+  var nodes = [
+    {site: 'site1.com', url: 'https://www.google.com', group: 0},
+    {site: 'site2.com', url: 'https://www.google.com', group: 1},
+    {site: 'site3.com', url: 'https://www.google.com', group: 1},
+    {site: 'site4.com', url: 'https://www.google.com', group: 1},
+    {site: 'site5.com', url: 'https://www.google.com', group: 1},
+    {site: 'site6.com', url: 'https://www.google.com', group: 2},
+    {site: 'site7.com', url: 'https://www.google.com', group: 2},
+    {site: 'site8.com', url: 'https://www.google.com', group: 2},
+    {site: 'site9.com', url: 'https://www.google.com', group: 2},
+    {site: 'site10.com', url: 'https://www.google.com', group: 2},
+    {site: 'site11.com', url: 'https://www.google.com', group: 2},
+    {site: 'site12.com', url: 'https://www.google.com', group: 2},
+    {site: 'site13.com', url: 'https://www.google.com', group: 2},
+    {site: 'site14.com', url: 'https://www.google.com', group: 2},
+    {site: 'site15.com', url: 'https://www.google.com', group: 2},
+    {site: 'site16.com', url: 'https://www.google.com', group: 2},
+    {site: 'site17.com', url: 'https://www.google.com', group: 2},
+];
+
+var links = [
+  {source: 'site1.com', target: 'site2.com'},
+  {source: 'site1.com', target: 'site3.com'},
+  {source: 'site1.com', target: 'site4.com'},
+  {source: 'site1.com', target: 'site5.com'},
+  {source: 'site2.com', target: 'site6.com'},
+  {source: 'site2.com', target: 'site7.com'},
+  {source: 'site2.com', target: 'site8.com'},
+  {source: 'site3.com', target: 'site9.com'},
+  {source: 'site3.com', target: 'site10.com'},
+  {source: 'site3.com', target: 'site11.com'},
+  {source: 'site4.com', target: 'site12.com'},
+  {source: 'site4.com', target: 'site13.com'},
+  {source: 'site4.com', target: 'site14.com'},
+  {source: 'site5.com', target: 'site15.com'},
+  {source: 'site5.com', target: 'site16.com'},
+  {source: 'site5.com', target: 'site17.com'},
+];
+
+  messageCount++;
+  var stringNodes = JSON.stringify(nodes);
+  var stringLinks = JSON.stringify(links);
+  res.write('id: ' + messageCount + '\n');
+  res.write(`data: {"nodes": ${stringNodes}, "links": ${stringLinks}}\n\n`);
+  messageCount++;
+  res.write('event: close\n');
+  res.write('id ' + messageCount + '\n');
+  res.write('data: ' + randomString() + '\n\n');
 });
 
 app.get('/graph',function(req,res,next){
