@@ -131,11 +131,14 @@ function visitPage(url, previousURL, keyword, pagesVisited, pastURLs) {
 					let pos = pagesVisited.map(function(x) {return x.url;}).indexOf(previousURL);
 					group = pagesVisited[pos].group + 1;
 				}
+				// Get title of webpage
+				let title = $("title").text();
 				
 				// Create object of page information
 				pagesVisited.push({
 					url: url,
 					prevURL: previousURL,
+					title: title,
 					keyword: keywordFound,
 					group: group
 				})
