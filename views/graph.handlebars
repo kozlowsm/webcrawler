@@ -13,87 +13,104 @@
   var link = document.getElementById("eventlink").innerHTML.replace(/&amp;/g, '&');
   var source = new EventSource(link);
 
-  //Holds node connections
-  var linkedByIndex = {};
-
-  //Data that drives the graph
-  var data = {
+  const data = {
     nodes: [],
     links: [],
-  };
+  }
 
-  //Select SVG element from html, acts as container for the graph
-  const svg = d3.select('svg');
-  //Gets the width and height of the inner browswer window
+  const linkedByIndex = {};
+
+  // Create canvas for graph
+  const svgCanvas = d3.select('svg');
+  // Get width and height of window for canvas size
   const width = window.innerWidth;
   const height = window.innerHeight;
 
-  //Sets the container dimensions
-  svg
+  // Set container dimensions
+  svgCanvas
     .attr('width', width)
-    .attr('height', height)
+    .attr('height', height);
 
-  //Size of the nodes
-  const nodeRadius = 10;
-  //Color scheme for the nodes
+  // Set colorScheme for the nodes
   const nodeColor = d3.scaleOrdinal(d3.schemeSet2);
+  var shape = d3.scaleOrdinal(d3.symbols)
 
-  //Create forces to separate nodes
-  const linkForce = d3.forceLink().id(d => d.site).distance(20).strength(0.3);
+  // Create D3 force instance --> controls all forces acting on graph
+  const graphSimulation = d3.forceSimulation();
+
+  // Create forces to act upon simulation
+  const linkForce = d3.forceLink().id(d => d.title).distance(20).strength(0.3);
   const chargeForce = d3.forceManyBody().strength(-200);
   const centerForce = d3.forceCenter(width / 2, height / 2);
   const collisionForce = d3.forceCollide(25);
-  //const variousForces = d3.
 
-  //Create D3 simulation object where forces will be applied
-  const simulation = d3.forceSimulation();
-
-
-  //Append the forces to the simulation object
-  simulation
+  // Append forces to simulation instance
+  graphSimulation
     .force('link', linkForce)
-    .force('charge', chargeForce)
     .force('center', centerForce)
-    .force('collision', collisionForce)
+    .force('charge', chargeForce)
+    .force('collision', collisionForce);
+
+  // Wrapper for all the elements within the graph
+  const graphWrapper = svgCanvas.append('g');
 
 
-  //Create group wrapper for entire graph, creating a group that will contain all other groups within the svg
-  const graphWrapper = svg.append('g');
-
-  //Group links together in graphWrapper
+  // Group for all links between nodes
   let linkElements = graphWrapper.append('g')
     .attr('class', 'links')
     .selectAll('line')
     .data(data.links)
-    .enter().append('line') //enter selection, append a new line for each virtual element
+    .enter().append('line');
 
-  //Group all node elemenst together in graphWrapper
+  // Group for all nodes within graph
   let nodeElements = graphWrapper.append('g')
-    .attr('class', 'nodes')
-    .selectAll('circle')
+    .selectAll('path')
     .data(data.nodes)
-    .enter().append('circle')
-    .attr('r', nodeRadius - .75)
+    .enter().append('path')
+
+
+
+  // Build the graph
+  // If node contains the found keyword
+  nodeElements
+    .filter(d => d.keyword)
+    .attr('d', d3.symbol()
+      .type(d => d3.symbolStar)
+      .size(850))
+    .attr('class', 'star')
+    .attr('fill', d => nodeColor(d.group));
+
+  // If it is a node without a found keyword
+  nodeElements
+    .filter(d => !(d.keyword))
+    .attr('d', d3.symbol()
+      .type(d => d3.symbolCircle)
+      .size(325))
+    .attr('class', 'circle')
     .attr('fill', d => nodeColor(d.group))
-    .on('click', d => window.open(d.url, '_blank')) //Open link in new tab after clicking node
-    .on('mouseover.fade', fade(.1))
+
+  nodeElements
+    .on('click', d => window.open(d.url, '_blank'))
     .on('mouseover.info', displayInfo)
-    .on('mouseout.fade', fade(1))
-    .on('mouseover.increaseNodeSize', increaseNodeSize)
-    .on('mouseout.decreaseNodeSize', decreaseNodeSize)
+    .on('mouseover.fade', fade(.1))
+    .on('mouseover.increase', increaseNodeSize)
+    .on('mouseleave.fade', fade(1))
+    .on('mouseleave.decrease', decreaseNodeSize)
     .call(d3.drag()
       .on('start', dragStarted)
       .on('drag', dragged)
-      .on('end', dragEnded));
+      .on('end', dragEnded))
 
-  svg.call(d3.zoom()
+  svgCanvas.call(d3.zoom()
     .on('zoom', zoomAction));
 
-  simulation
+
+  // Start the simulation
+  graphSimulation
     .nodes(data.nodes)
     .on('tick', tickAction);
 
-  simulation
+  graphSimulation
     .force('link')
     .links(data.links);
 
@@ -101,8 +118,7 @@
     linkedByIndex[`${d.source.index},${d.target.index}`] = 1;
   });
 
-  /*Functions to get everything moving*/
-  //Function that runs for each node, sets positions of links and nodes
+  // Helper functions
   function tickAction() {
     linkElements
       .attr('x1', d => d.source.x)
@@ -110,15 +126,11 @@
       .attr('x2', d => d.target.x)
       .attr('y2', d => d.target.y);
     nodeElements
-      .attr('cx', d => d.x = Math.max(nodeRadius, Math.min(width - nodeRadius, d.x)))
-      .attr('cy', d => d.y = Math.max(nodeRadius, Math.min(height - nodeRadius, d.y)));
+      .attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')' });
   }
 
-  /*
-  * Set of functions that handle node dragging events
-  */
   function dragStarted(d) {
-    if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+    if (!d3.event.active) graphSimulation.alphaTarget(0.3).restart();
     d.fx = d.x;
     d.fy = d.y;
   }
@@ -129,7 +141,7 @@
   }
 
   function dragEnded(d) {
-    if (!d3.event.active) simulation.alphaTarget(0);
+    if (!d3.event.active) graphSimulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
   }
@@ -146,8 +158,15 @@
   }
 
   function displayInfo(d) {
-    const infoBox = d3.select('#info')
-      .html(`<h2>Name: ${d.site}</h2><br><h3>URL: <span id="url">${d.url}</span></h3>`);
+    const infoBox = d3.select('#info');
+    if (d.keyword) {
+      infoBox.html(`<h1>Keyword Found</h1>
+											<h2>Page Title: ${d.title}</h2>
+											<h3>URL: <span id="url">${d.url}</span></h3>`);
+    } else {
+      infoBox.html(`<h2>Page Title: ${d.title}</h2>
+										<h3>URL: <span id="url">${d.url}</span></h3>`);
+    }
   }
 
   function isConnected(a, b) {
@@ -167,21 +186,43 @@
   }
 
   function increaseNodeSize(d) {
-    const node = d3.select(this)
-      .transition()
-      .duration(750)
-      .attr('r', 16);
+    const node = d3.select(this);
+    if (d.keyword) {
+      node
+        .transition()
+        .duration(500)
+        .attr('d', d3.symbol()
+          .type(d3.symbolStar)
+          .size(1750));
+    } else {
+      node
+        .transition()
+        .duration(500)
+        .attr('d', d3.symbol()
+          .type(d3.symbolCircle)
+          .size(1000));
+    }
   }
 
-  function decreaseNodeSize() {
-    const node = d3.select(this)
-      .transition()
-      .duration(750)
-      .attr('r', nodeRadius);
+  function decreaseNodeSize(d) {
+    const node = d3.select(this);
+    if (d.keyword) {
+      node
+        .transition()
+        .duration(500)
+        .attr('d', d3.symbol()
+          .type(d3.symbolStar)
+          .size(850))
+    } else {
+      node
+        .transition()
+        .duration(500)
+        .attr('d', d3.symbol()
+          .type(d3.symbolCircle)
+          .size(325))
+    }
   }
 
-  //Update function
-  //Everytime a new piece of data is added
   function update() {
     linkElements = linkElements.data(data.links);
     linkElements.exit().remove();
@@ -191,35 +232,54 @@
 
     nodeElements = nodeElements.data(data.nodes);
     nodeElements.exit().remove();
-    nodeElements = nodeElements.enter().append('circle')
-      .attr('class', 'nodes')
-      .attr('r', nodeRadius - .75)
+    nodeElements = nodeElements.enter().append('path')
+      .merge(nodeElements);
+
+    // If node contains the found keyword
+    nodeElements
+      .filter(d => d.keyword)
+      .attr('d', d3.symbol()
+        .type(d => d3.symbolStar)
+        .size(850))
+      .attr('class', 'star')
+      .attr('fill', d => nodeColor(d.group));
+
+    // If it is a node without a found keyword
+    nodeElements
+      .filter(d => !(d.keyword))
+      .attr('d', d3.symbol()
+        .type(d => d3.symbolCircle)
+        .size(325))
+      .attr('class', 'circle')
       .attr('fill', d => nodeColor(d.group))
+
+    nodeElements
       .on('click', d => window.open(d.url, '_blank'))
+      .on('mouseover.info', displayInfo)
+      .on('mouseover.fade', fade(.1))
+      .on('mouseover.increase', increaseNodeSize)
+      .on('mouseleave.fade', fade(1))
+      .on('mouseleave.decrease', decreaseNodeSize)
       .call(d3.drag()
         .on('start', dragStarted)
         .on('drag', dragged)
         .on('end', dragEnded))
-      .merge(nodeElements);
+    //.merge(nodeElements)
 
-    //Handle mouse events over nodes
-    nodeElements
-      .on('mouseover.fade', fade(.1))
-      .on('mouseover.info', displayInfo)
-      .on('mouseover.increaseNodeSize', increaseNodeSize)
-      .on('mouseout.fade', fade(1))
-      .on('mouseout.decreaseNodeSize', decreaseNodeSize);
 
-    simulation
+    svgCanvas.call(d3.zoom()
+      .on('zoom', zoomAction));
+
+    // Start the simulation
+    graphSimulation
       .nodes(data.nodes)
+      .on('tick', tickAction);
+
+    graphSimulation
       .force('link')
       .links(data.links);
 
-    svg.call(d3.zoom()
-      .on('zoom', zoomAction));
-
-    //restart the simulation
-    simulation.alphaTarget(0.70).restart();
+    graphSimulation.alphaTarget(0.70).restart();
   }
 
   // Listening to server for data
@@ -233,7 +293,7 @@
 
     //create node and link object that d3 understands
     graphData.results.forEach(link => {
-      newNodes.push({ site: link.url, url: link.url, group: link.group, keyword: link.keyword });
+      newNodes.push({ title: link.url, url: link.url, group: link.group, keyword: link.keyword });
       newLinks.push({ source: `${link.prevURL ? link.prevURL : link.url}`, target: link.url });
     });
 

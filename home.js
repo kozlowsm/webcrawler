@@ -84,7 +84,7 @@ app.get('/stream', async function(req,res,next){
     'Connection': 'keep-alive'
   });
   
-  var depthFirstResults = await crawler.depthFirst(req.query.url, req.query.limit, null);
+  var depthFirstResults = await crawler.depthFirst(req.query.url, req.query.limit, req.query.keyword);
   //var breadthFirstResults = await crawler.asyncBreadthFirst(req.query.url, req.query.limit, null);
 
   var messageCount = 0;

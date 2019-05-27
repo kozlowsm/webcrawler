@@ -20,15 +20,22 @@ form, li {
   stroke-opacity: 0.85;
 }
 
-#end-arrow {
-  fill: #aaa;
-}
 
-/*What is this pointer-events?*/
-.nodes circle {
-  pointer-events: all; 
+/*Shape Specific class --> Cirlce*/
+.circle {
+  pointer-event: all;
   stroke-width: 1.5px;
   stroke: black;
+  cursor: pointer;
+}
+
+/*Shape Specific Class --> Star*/
+.star {
+  pointer-event: all;
+  stroke-width: 1.5px;
+  stroke: black;
+  fill: yellow;
+  cursor: pointer;
 }
 
 #info {
@@ -42,3 +49,4 @@ form, li {
 #info #url {
   color: red;
 }
+
